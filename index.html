@@ -3,13 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Age of Empires Taunt Soundboard</title>
+    <title>AoE2 Taunt Soundboard</title>
+    <meta name="description" content="Play every Age of Empires II taunt in your browser. Search, browse by category, or hit random.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%94%EF%B8%8F%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Age of Empires Taunt Soundboard</h1>
-    <div id="soundboard"></div>
-    <button id="randomButton">Play Random Taunt</button>
+    <header class="hero">
+        <h1>Age of Empires II<span>Taunt Soundboard</span></h1>
+        <p class="tagline">Wololo. Roggan. All 105 taunts, one click away.</p>
+    </header>
+
+    <div class="controls">
+        <div class="search-wrap">
+            <input type="search" id="searchInput" placeholder="Search taunts…" aria-label="Search taunts">
+        </div>
+        <button id="randomButton">🎲 Play Random Taunt</button>
+        <span id="resultCount" class="result-count"></span>
+    </div>
+
+    <main id="soundboard"></main>
+
+    <div id="nowPlaying" class="now-playing" hidden>
+        <span id="nowPlayingText"></span>
+    </div>
+
+    <footer>
+        <p>Taunt audio from the original Age of Empires II. Source on <a href="https://github.com/mja1337/aoe2taunts" target="_blank" rel="noopener">GitHub</a>.</p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
