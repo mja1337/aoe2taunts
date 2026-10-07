@@ -534,6 +534,118 @@ const taunts = [
     }
 ]
 
+// Clean up section labels like "Community taunts[]" -> "Community Taunts"
+function formatSectionName(name) {
+    return name
+        .replace(/\[\]$/, '')
+        .trim()
+        .split(' ')
+        .map(word => /^ii$/i.test(word) ? 'II' : word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+let currentAudio = null;
+let currentCard = null;
+const allCards = []; // { card, number, description, url }
+
+function stopCurrentAudio() {
+    const audio = currentAudio;
+    const card = currentCard;
+    // Drop the current pointers first so a rejection or error event from
+    // this clip cannot clear a newer taunt that has already taken over.
+    currentAudio = null;
+    currentCard = null;
+
+    if (audio) {
+        audio.pause();
+        try {
+            audio.currentTime = 0;
+        } catch (e) {
+            // Seeking can throw if metadata has not loaded yet.
+        }
+    }
+    if (card) card.classList.remove('playing');
+
+    const nowPlaying = document.getElementById('nowPlaying');
+    const nowPlayingText = document.getElementById('nowPlayingText');
+    if (nowPlayingText) nowPlayingText.textContent = '';
+    if (nowPlaying) nowPlaying.hidden = true;
+}
+
+function playAudio(url, card, description) {
+    stopCurrentAudio();
+
+    const audio = new Audio(url);
+    currentAudio = audio;
+    currentCard = card;
+    card.classList.add('playing');
+
+    const nowPlaying = document.getElementById('nowPlaying');
+    const nowPlayingText = document.getElementById('nowPlayingText');
+    if (nowPlaying && nowPlayingText) {
+        nowPlayingText.textContent = `▶ ${description}`;
+        nowPlaying.hidden = false;
+    }
+
+    const clearIfStillCurrent = () => {
+        if (currentAudio === audio) stopCurrentAudio();
+    };
+
+    audio.addEventListener('ended', clearIfStillCurrent);
+    audio.addEventListener('error', clearIfStillCurrent);
+
+    const pending = audio.play();
+    if (pending && typeof pending.catch === 'function') {
+        pending.catch(() => {
+            // play() rejects with AbortError when a later click pauses this
+            // clip, and with a load/decode error when the file is missing.
+            // Swallow both so nothing surfaces as an unhandled rejection,
+            // and clear the UI only if this clip is still the active one.
+            clearIfStillCurrent();
+        });
+    }
+}
+
+function updateResultCount(visible, total) {
+    const el = document.getElementById('resultCount');
+    if (el) {
+        if (visible === 0) el.textContent = 'No matching taunts';
+        else if (visible === total) el.textContent = `${total} taunts`;
+        else el.textContent = `${visible} of ${total} taunts`;
+    }
+
+    const randomButton = document.getElementById('randomButton');
+    if (randomButton) {
+        const none = visible === 0;
+        randomButton.disabled = none;
+        randomButton.title = none ? 'No taunts match this search' : 'Play a random visible taunt';
+    }
+}
+
+function applyFilter(query) {
+    const q = query.trim().toLowerCase();
+    let visibleCount = 0;
+
+    document.querySelectorAll('.category').forEach(categoryEl => {
+        let anyVisibleInCategory = false;
+
+        categoryEl.querySelectorAll('.taunt-card').forEach(card => {
+            const number = card.dataset.number;
+            const desc = card.dataset.description.toLowerCase();
+            const matches = !q || desc.includes(q) || number === q;
+            card.classList.toggle('hidden', !matches);
+            if (matches) {
+                anyVisibleInCategory = true;
+                visibleCount++;
+            }
+        });
+
+        categoryEl.classList.toggle('hidden', !anyVisibleInCategory);
+    });
+
+    updateResultCount(visibleCount, allCards.length);
+}
+
 // Function to initialize the soundboard
 function initSoundboard(taunts) {
     const soundboard = document.getElementById('soundboard');
@@ -543,39 +655,95 @@ function initSoundboard(taunts) {
         return;
     }
 
-    // Iterate over the nested taunt structure
     taunts.forEach(game => {
         for (const gameName in game) {
             const gameSection = game[gameName];
             for (const section in gameSection) {
                 const tauntList = gameSection[section];
+
+                const categoryEl = document.createElement('section');
+                categoryEl.className = 'category';
+
+                const heading = document.createElement('h2');
+                heading.textContent = formatSectionName(section);
+                categoryEl.appendChild(heading);
+
+                const grid = document.createElement('div');
+                grid.className = 'taunt-grid';
+
                 tauntList.forEach(taunt => {
-                    const button = document.createElement('button');
-                    button.innerText = `${taunt.number}: ${taunt.description}`;
-                    button.onclick = () => playAudio(taunt.url);
-                    soundboard.appendChild(button);
+                    const card = document.createElement('button');
+                    card.className = 'taunt-card';
+                    card.dataset.number = String(taunt.number);
+                    card.dataset.description = taunt.description;
+                    card.setAttribute('aria-label', `Taunt ${taunt.number}: ${taunt.description}`);
+
+                    const numberEl = document.createElement('span');
+                    numberEl.className = 'taunt-number';
+                    numberEl.textContent = taunt.number;
+
+                    const descEl = document.createElement('span');
+                    descEl.className = 'taunt-desc';
+                    descEl.textContent = taunt.description;
+
+                    card.appendChild(numberEl);
+                    card.appendChild(descEl);
+                    card.onclick = () => {
+                        // A second click on the taunt that is already playing stops it.
+                        if (currentCard === card && currentAudio && !currentAudio.ended) {
+                            stopCurrentAudio();
+                            return;
+                        }
+                        playAudio(taunt.url, card, taunt.description);
+                    };
+
+                    grid.appendChild(card);
+                    allCards.push({ card, number: taunt.number, description: taunt.description, url: taunt.url });
                 });
+
+                categoryEl.appendChild(grid);
+                soundboard.appendChild(categoryEl);
             }
         }
     });
 
-    // Handle random button click
+    const tagline = document.getElementById('tagline');
+    if (tagline) {
+        tagline.textContent = `Wololo. Roggan. All ${allCards.length} taunts, one click away.`;
+    }
+
+    updateResultCount(allCards.length, allCards.length);
+
     document.getElementById('randomButton').onclick = () => {
-        const flatTaunts = taunts.flatMap(game => 
-            Object.values(game).flatMap(section => 
-                Object.values(section).flat()
-            )
-        );
-        const randomIndex = Math.floor(Math.random() * flatTaunts.length);
-        playAudio(flatTaunts[randomIndex].url);
+        const visibleCards = allCards.filter(({ card }) => !card.classList.contains('hidden'));
+        // An empty search should not fall back to hidden cards.
+        if (!visibleCards.length) return;
+        const pick = visibleCards[Math.floor(Math.random() * visibleCards.length)];
+        playAudio(pick.url, pick.card, pick.description);
     };
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', e => applyFilter(e.target.value));
+        searchInput.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            const query = e.target.value.trim();
+            if (!query) return;
+
+            if (/^\d+$/.test(query)) {
+                const match = allCards.find(({ number }) => String(number) === query);
+                if (match) playAudio(match.url, match.card, match.description);
+                return;
+            }
+
+            const visible = allCards.filter(({ card }) => !card.classList.contains('hidden'));
+            if (visible.length === 1) {
+                const match = visible[0];
+                playAudio(match.url, match.card, match.description);
+            }
+        });
+    }
 }
 
 // Call the initialization function with the taunts data
 initSoundboard(taunts);
-
-// Function to play the audio
-function playAudio(url) {
-    const audio = new Audio(url);
-    audio.play();
-}
