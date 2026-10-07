@@ -83,9 +83,10 @@ body {
 }
 
 #searchInput:focus {
-    outline: none;
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
+    outline: 3px solid var(--gold-bright);
+    outline-offset: 3px;
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 0 6px rgba(241, 201, 74, 0.45);
 }
 
 .result-count {

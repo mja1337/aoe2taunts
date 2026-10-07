@@ -676,6 +676,7 @@ function initSoundboard(taunts) {
                     card.className = 'taunt-card';
                     card.dataset.number = String(taunt.number);
                     card.dataset.description = taunt.description;
+                    card.setAttribute('aria-label', `Taunt ${taunt.number}: ${taunt.description}`);
 
                     const numberEl = document.createElement('span');
                     numberEl.className = 'taunt-number';
