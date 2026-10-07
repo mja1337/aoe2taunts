@@ -1,0 +1,11 @@
+# Source files in this repo are stored with CRLF, matching main.
+# `-text` stops Git from normalizing them to LF on check-in, which would
+# rewrite every line and hide real edits. `diff` keeps the review as text.
+*.html -text diff
+*.css  -text diff
+*.js   -text diff
+*.py   -text diff
+*.md   -text diff
+*.yml  -text diff
+*.yaml -text diff
+*.ogg  binary
