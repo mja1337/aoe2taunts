@@ -722,9 +722,19 @@ function initSoundboard(taunts) {
         searchInput.addEventListener('keydown', e => {
             if (e.key !== 'Enter') return;
             const query = e.target.value.trim();
-            if (!/^\d+$/.test(query)) return;
-            const match = allCards.find(({ number }) => String(number) === query);
-            if (match) playAudio(match.url, match.card, match.description);
+            if (!query) return;
+
+            if (/^\d+$/.test(query)) {
+                const match = allCards.find(({ number }) => String(number) === query);
+                if (match) playAudio(match.url, match.card, match.description);
+                return;
+            }
+
+            const visible = allCards.filter(({ card }) => !card.classList.contains('hidden'));
+            if (visible.length === 1) {
+                const match = visible[0];
+                playAudio(match.url, match.card, match.description);
+            }
         });
     }
 }
