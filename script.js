@@ -707,6 +707,11 @@ function initSoundboard(taunts) {
         }
     });
 
+    const tagline = document.getElementById('tagline');
+    if (tagline) {
+        tagline.textContent = `Wololo. Roggan. All ${allCards.length} taunts, one click away.`;
+    }
+
     updateResultCount(allCards.length, allCards.length);
 
     document.getElementById('randomButton').onclick = () => {
