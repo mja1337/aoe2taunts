@@ -608,10 +608,18 @@ function playAudio(url, card, description) {
 
 function updateResultCount(visible, total) {
     const el = document.getElementById('resultCount');
-    if (!el) return;
-    el.textContent = visible === total
-        ? `${total} taunts`
-        : `${visible} of ${total} taunts`;
+    if (el) {
+        if (visible === 0) el.textContent = 'No matching taunts';
+        else if (visible === total) el.textContent = `${total} taunts`;
+        else el.textContent = `${visible} of ${total} taunts`;
+    }
+
+    const randomButton = document.getElementById('randomButton');
+    if (randomButton) {
+        const none = visible === 0;
+        randomButton.disabled = none;
+        randomButton.title = none ? 'No taunts match this search' : 'Play a random visible taunt';
+    }
 }
 
 function applyFilter(query) {
@@ -702,8 +710,9 @@ function initSoundboard(taunts) {
 
     document.getElementById('randomButton').onclick = () => {
         const visibleCards = allCards.filter(({ card }) => !card.classList.contains('hidden'));
-        const pool = visibleCards.length ? visibleCards : allCards;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
+        // An empty search should not fall back to hidden cards.
+        if (!visibleCards.length) return;
+        const pick = visibleCards[Math.floor(Math.random() * visibleCards.length)];
         playAudio(pick.url, pick.card, pick.description);
     };
 

@@ -122,6 +122,14 @@ button:active {
     white-space: nowrap;
 }
 
+#randomButton:disabled,
+#randomButton:disabled:hover {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 main#soundboard {
     max-width: 1000px;
     margin: 0 auto;
