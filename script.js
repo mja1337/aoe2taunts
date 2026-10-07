@@ -549,16 +549,26 @@ let currentCard = null;
 const allCards = []; // { card, number, description, url }
 
 function stopCurrentAudio() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-    }
-    if (currentCard) {
-        currentCard.classList.remove('playing');
-    }
-    currentCard = null;
+    const audio = currentAudio;
+    const card = currentCard;
+    // Drop the current pointers first so a rejection or error event from
+    // this clip cannot clear a newer taunt that has already taken over.
     currentAudio = null;
+    currentCard = null;
+
+    if (audio) {
+        audio.pause();
+        try {
+            audio.currentTime = 0;
+        } catch (e) {
+            // Seeking can throw if metadata has not loaded yet.
+        }
+    }
+    if (card) card.classList.remove('playing');
+
     const nowPlaying = document.getElementById('nowPlaying');
+    const nowPlayingText = document.getElementById('nowPlayingText');
+    if (nowPlayingText) nowPlayingText.textContent = '';
     if (nowPlaying) nowPlaying.hidden = true;
 }
 
@@ -577,11 +587,23 @@ function playAudio(url, card, description) {
         nowPlaying.hidden = false;
     }
 
-    audio.addEventListener('ended', () => {
+    const clearIfStillCurrent = () => {
         if (currentAudio === audio) stopCurrentAudio();
-    });
+    };
 
-    audio.play();
+    audio.addEventListener('ended', clearIfStillCurrent);
+    audio.addEventListener('error', clearIfStillCurrent);
+
+    const pending = audio.play();
+    if (pending && typeof pending.catch === 'function') {
+        pending.catch(() => {
+            // play() rejects with AbortError when a later click pauses this
+            // clip, and with a load/decode error when the file is missing.
+            // Swallow both so nothing surfaces as an unhandled rejection,
+            // and clear the UI only if this clip is still the active one.
+            clearIfStillCurrent();
+        });
+    }
 }
 
 function updateResultCount(visible, total) {
@@ -657,7 +679,14 @@ function initSoundboard(taunts) {
 
                     card.appendChild(numberEl);
                     card.appendChild(descEl);
-                    card.onclick = () => playAudio(taunt.url, card, taunt.description);
+                    card.onclick = () => {
+                        // A second click on the taunt that is already playing stops it.
+                        if (currentCard === card && currentAudio && !currentAudio.ended) {
+                            stopCurrentAudio();
+                            return;
+                        }
+                        playAudio(taunt.url, card, taunt.description);
+                    };
 
                     grid.appendChild(card);
                     allCards.push({ card, number: taunt.number, description: taunt.description, url: taunt.url });
